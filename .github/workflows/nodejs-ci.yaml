@@ -1,0 +1,26 @@
+name: Node.js CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Check Node.js version before setup-node action
+      - name: Check Node.js version before
+        run: node --version
+
+      # Setup Node.js version using .nvmrc file
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      
+      # Check Node.js version after setup-node action
+      - name: Check Node.js version after
+        run: node --version
+
+      - run: npm install
+      - run: npm test

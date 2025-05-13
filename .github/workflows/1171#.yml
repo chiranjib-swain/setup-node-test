@@ -4,17 +4,17 @@ on:
   workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
-  # Job 1: Test with Node.js version 16
-  node16:
+  # Job 1: Test with Node.js version 12
+  node12:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Node.js (v16)
+      - name: Set up Node.js (v12)
         uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '12'
           cache: 'npm'
 
       - name: Install dependencies
@@ -29,7 +29,7 @@ jobs:
   # Job 2: Test with Node.js version 18, depends on Job 1
   node18:
     runs-on: ubuntu-latest
-    needs: node16
+    needs: node12
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

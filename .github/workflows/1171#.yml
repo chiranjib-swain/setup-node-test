@@ -1,0 +1,50 @@
+name: Test Node.js Cache Key with Multiple Jobs
+
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  # Job 1: Test with Node.js version 16
+  node16:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js (v16)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      # - name: Cache key for Node.js v16
+      #   run: echo "Cache Key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}-node-16"
+
+      - name: Print environment variables
+        run: printenv
+
+  # Job 2: Test with Node.js version 18, depends on Job 1
+  node18:
+    runs-on: ubuntu-latest
+    needs: node16
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js (v18)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      # - name: Cache key for Node.js v18
+      #   run: echo "Cache Key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}-node-18"
+
+      - name: Print environment variables
+        run: printenv

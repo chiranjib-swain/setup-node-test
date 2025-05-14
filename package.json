@@ -31,6 +31,9 @@
         "name": "node",
         "version": "v23.10.0"
       }
+    },
+    "volta": {
+      "node": "14.21.3"
     }
   
 }

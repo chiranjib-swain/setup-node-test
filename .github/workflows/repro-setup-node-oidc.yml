@@ -1,0 +1,68 @@
+name: Repro setup-node OIDC vs auth token
+
+on:
+  workflow_dispatch:
+
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create minimal package.json (so npm commands behave)
+        shell: bash
+        run: |
+          cat > package.json <<'JSON'
+          {
+            "name": "repro-setup-node-oidc",
+            "version": "0.0.0",
+            "private": true
+          }
+          JSON
+
+      - name: Show env BEFORE setup-node
+        shell: bash
+        run: |
+          echo "Before setup-node:"
+          env | sort | grep -E '^(NODE_AUTH_TOKEN|NPM_AUTH_TOKEN|NPM_TOKEN|NPM_CONFIG_PROVENANCE)=' || echo "No npm token env vars set"
+
+      - name: Setup Node (the 'magic' happens when registry-url is set)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Show env + npmrc AFTER setup-node
+        shell: bash
+        run: |
+          echo "After setup-node:"
+          env | sort | grep -E '^(NODE_AUTH_TOKEN|NPM_AUTH_TOKEN|NPM_TOKEN|NPM_CONFIG_PROVENANCE)=' || echo "No npm token env vars set"
+          echo
+          echo "~/.npmrc (sanitized):"
+          if [ -f "$HOME/.npmrc" ]; then
+            sed -E 's/(authToken=).*/\1***redacted***/g' "$HOME/.npmrc"
+          else
+            echo "no ~/.npmrc"
+          fi
+          echo
+          echo "npm config userconfig: $(npm config get userconfig)"
+          echo "npm config globalconfig: $(npm config get globalconfig)"
+
+      - name: Simulate OIDC publish mode (provenance) + clear tokens
+        shell: bash
+        run: |
+          echo "Clearing token env vars (workaround style) and enabling provenance"
+          echo "NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
+          echo "NPM_AUTH_TOKEN=" >> "$GITHUB_ENV"
+          echo "NPM_TOKEN=" >> "$GITHUB_ENV"
+          echo "NPM_CONFIG_PROVENANCE=true" >> "$GITHUB_ENV"
+
+      - name: Confirm cleared tokens
+        shell: bash
+        run: |
+          echo "After clearing:"
+          env | sort | grep -E '^(NODE_AUTH_TOKEN|NPM_AUTH_TOKEN|NPM_TOKEN|NPM_CONFIG_PROVENANCE)=' || true

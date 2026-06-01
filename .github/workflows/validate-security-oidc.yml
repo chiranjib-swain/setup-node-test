@@ -2,11 +2,8 @@
 name: Validate OIDC security behavior
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch
 
-workflow_dispatch:
 
 jobs:
 

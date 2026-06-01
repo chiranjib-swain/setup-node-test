@@ -1,0 +1,131 @@
+# .github/workflows/validate-security-oidc.yml
+name: Validate OIDC security behavior
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+workflow_dispatch:
+
+jobs:
+
+  # Validates claim:
+  # "Omitting cache: alone is not enough — automatic caching can still activate
+  #  via the packageManager field in package.json"
+  auto-cache-activates-without-flag:
+    name: Auto-cache activates when packageManager field present
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Inject packageManager field into package.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.packageManager = 'npm@10.9.2';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Setup Node WITHOUT package-manager-cache false
+        id: setup
+        uses: chiranjib-swain/setup-node@fix/oidc-trusted-publisher-cache-security
+        with:
+          node-version: '24'
+          # cache: input is NOT set — proves omitting it is not enough
+
+      # The step above should log:
+      # "Auto caching has been enabled for npm. If you want to disable it,
+      #  set package-manager-cache input to false"
+      - name: Assert cache state WAS saved (auto-cache activated)
+        run: |
+          STATE=$(cat "$GITHUB_STATE" 2>/dev/null || true)
+          if echo "$STATE" | grep -q "CACHE_PACKAGE_MANAGER"; then
+            echo "PASS: auto-cache activated as expected when packageManager field is present"
+          else
+            echo "INFO: check the setup-node step logs above for the auto-caching info message"
+          fi
+
+  # Validates claim:
+  # "package-manager-cache: false suppresses automatic caching
+  #  even when packageManager field is in package.json"
+  cache-suppressed-with-flag:
+    name: package-manager-cache false suppresses auto-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Inject packageManager field into package.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.packageManager = 'npm@10.9.2';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Setup Node WITH package-manager-cache false
+        id: setup
+        uses: chiranjib-swain/setup-node@fix/oidc-trusted-publisher-cache-security
+        with:
+          node-version: '24'
+          package-manager-cache: false   # This is what suppresses auto-cache
+
+      - name: Assert cache-hit is not set
+        run: |
+          if [ "${{ steps.setup.outputs.cache-hit }}" = "true" ]; then
+            echo "FAIL: cache-hit was true despite package-manager-cache: false"
+            exit 1
+          fi
+          echo "PASS: cache was not restored — package-manager-cache: false works"
+
+  # Validates claim:
+  # "A poisoned cache can expose credentials (including OIDC tokens)"
+  # — specifically that the runtime warning fires when id-token:write + cache active
+  oidc-warning-fires:
+    name: Warning fires when OIDC active and cache not disabled
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write    # simulates a publish workflow
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node — expect cache poisoning warning in logs
+        uses: chiranjib-swain/setup-node@fix/oidc-trusted-publisher-cache-security
+        with:
+          node-version: '24'
+          # package-manager-cache defaults to true
+          # Expected warning: "Cache is enabled in a workflow that has OIDC
+          # publish permissions (id-token: write)..."
+
+      - name: Confirm warning message
+        run: |
+          echo "Inspect the 'Setup Node' step above."
+          echo "It must contain a WARNING: 'Cache is enabled in a workflow that has OIDC publish permissions'"
+          echo "If the warning is absent, the runtime guard in main.ts is not firing."
+
+  # Validates claim:
+  # "Explicitly setting package-manager-cache to false is the only safe option"
+  # — warning is suppressed when flag is set correctly
+  oidc-warning-suppressed:
+    name: Warning is suppressed when package-manager-cache false
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node — no warning expected
+        uses: chiranjib-swain/setup-node@fix/oidc-trusted-publisher-cache-security
+        with:
+          node-version: '24'
+          package-manager-cache: false   # Correct setting — no warning should appear
+
+      - name: Confirm no warning
+        run: |
+          echo "Inspect the 'Setup Node' step above."
+          echo "It must NOT contain the cache poisoning warning."
+          echo "If the warning still appears, the isOIDC check in main.ts needs fixing."

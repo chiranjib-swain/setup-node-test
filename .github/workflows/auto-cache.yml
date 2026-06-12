@@ -60,15 +60,15 @@ jobs:
 
       - name: Inject devEngines.packageManager into package.json
         run: |
-          cat > package.json << 'EOF'
-          {
+            cat > package.json << 'EOF'
+            {
             "name": "setup-node-test",
             "version": "1.0.0",
             "devEngines": {
-              "packageManager": { "name": "npm", "version": "^10" }
+                "packageManager": { "name": "npm", "version": ">=10 <12" }
             }
-          }
-          EOF
+            }
+            EOF
 
       - uses: actions/setup-node@v6
         with:

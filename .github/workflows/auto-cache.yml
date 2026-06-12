@@ -20,7 +20,7 @@ jobs:
           }
           EOF
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           # package-manager-cache defaults to true
@@ -44,7 +44,7 @@ jobs:
           }
           EOF
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           package-manager-cache: false
@@ -70,7 +70,7 @@ jobs:
           }
           EOF
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           # Expect same auto-cache log via devEngines path

@@ -1,0 +1,78 @@
+name: Test package-manager-cache behavior
+
+on:
+  workflow_dispatch:
+
+jobs:
+  auto-cache-activates:
+    name: Auto-cache activates (packageManager field, no flag)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject packageManager field into package.json
+        run: |
+          cat > package.json << 'EOF'
+          {
+            "name": "setup-node-test",
+            "version": "1.0.0",
+            "packageManager": "npm@10.9.2"
+          }
+          EOF
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          # package-manager-cache defaults to true
+          # Expect log: "Detected npm as the package manager from package.json's packageManager field"
+
+      - run: npm install
+
+  auto-cache-suppressed:
+    name: Auto-cache suppressed (packageManager field + flag)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject packageManager field into package.json
+        run: |
+          cat > package.json << 'EOF'
+          {
+            "name": "setup-node-test",
+            "version": "1.0.0",
+            "packageManager": "npm@10.9.2"
+          }
+          EOF
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          package-manager-cache: false
+          # No cache log expected
+
+      - run: npm install
+
+  devengines-auto-cache:
+    name: Auto-cache via devEngines.packageManager
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject devEngines.packageManager into package.json
+        run: |
+          cat > package.json << 'EOF'
+          {
+            "name": "setup-node-test",
+            "version": "1.0.0",
+            "devEngines": {
+              "packageManager": { "name": "npm", "version": "^10" }
+            }
+          }
+          EOF
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          # Expect same auto-cache log via devEngines path
+
+      - run: npm install
